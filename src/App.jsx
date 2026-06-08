@@ -301,7 +301,7 @@ export default function App() {
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <img src="https://assets.football-logos.cc/logos/tournaments/1500x1500/fifa-world-cup-2026.31d2489d.png" 
               alt="Mundial 2026" 
-              style={{ width: 100, height: 100, objectFit: 'contain', marginBottom: 8 }} />
+              style={{ width: 160, height: 160, objectFit: 'contain', marginBottom: 8 }} />
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 34, fontWeight: 800, letterSpacing: 2 }}>POLLA MUNDIAL</div>
         <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>USA · MÉXICO · CANADÁ 2026</div>
         <div style={{ color: '#A0B4C8', fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>by Maru</div>
