@@ -299,7 +299,9 @@ export default function App() {
       {toast.msg && <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', background: toast.ok ? '#1B5E20' : RED, color: '#fff', borderRadius: '0 0 10px 10px', padding: '10px 20px', fontSize: 14, fontWeight: 600, zIndex: 999, whiteSpace: 'nowrap' }}>{toast.msg}</div>}
       {showRules && <RulesModal />}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 60, marginBottom: 8 }}>🏆</div>
+        <img src="https://assets.football-logos.cc/logos/tournaments/1500x1500/fifa-world-cup-2026.31d2489d.png" 
+              alt="Mundial 2026" 
+              style={{ width: 100, height: 100, objectFit: 'contain', marginBottom: 8 }} />
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 34, fontWeight: 800, letterSpacing: 2 }}>POLLA MUNDIAL</div>
         <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>USA · MÉXICO · CANADÁ 2026</div>
         <div style={{ color: '#A0B4C8', fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>by Maru</div>
