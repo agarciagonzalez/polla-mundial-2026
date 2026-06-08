@@ -424,7 +424,10 @@ export default function App() {
 
       <div style={{ background: `linear-gradient(135deg,${RED} 0%,${BG} 60%)`, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
         <div>
-          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: 1 }}>⚽ POLLA MUNDIAL 2026</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <img src="/balon.jpeg" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: 1 }}>POLLA MUNDIAL 2026</span>
+          </div>
           <div style={{ color: GOLD, fontSize: 12 }}>{user.name} {user.is_admin ? '👑' : ''}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
