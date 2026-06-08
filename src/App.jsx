@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 const SB_URL = 'https://yykgwrkziiyyackcixet.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5a2d3cmt6aWl5eWFja2NpeGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTU4NDUsImV4cCI6MjA5NjQzMTg0NX0.BAboKgvb2yPZ92sImq6ePT4QicPJR_11XgaX9UAteZg';
+const SB_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const H = {
   'apikey': SB_KEY,
   'Authorization': `Bearer ${SB_KEY}`,
