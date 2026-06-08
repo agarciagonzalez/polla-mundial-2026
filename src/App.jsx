@@ -1,3 +1,5 @@
+// v2 - anon key actualizada
+
 import { useState, useEffect, useCallback } from "react";
 
 const SB_URL = 'https://yykgwrkziiyyackcixet.supabase.co';
