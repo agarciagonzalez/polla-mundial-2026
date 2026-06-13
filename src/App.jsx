@@ -99,6 +99,7 @@ export default function App() {
   const [showRules, setShowRules] = useState(false);
   const [search, setSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showMatchPreds, setShowMatchPreds] = useState(null);
 
   const say = (msg, ok = true) => {
     setToast({ msg, ok });
@@ -310,21 +311,17 @@ export default function App() {
       <div style={card}>
         <div style={{ display: 'flex', marginBottom: 20, background: BG, borderRadius: 8, padding: 4 }}>
           <button style={{ flex: 1, padding: 8, borderRadius: 6, background: !isReg ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} onClick={() => setIsReg(false)}>Ingresar</button>
-          <button style={{ flex: 1, padding: 8, borderRadius: 6, background: isReg ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} onClick={() => setIsReg(true)}>Registrarse</button>
+          <button style={{ flex: 1, padding: 8, borderRadius: 6, background: 'transparent', color: '#555', border: 'none', fontWeight: 600, cursor: 'not-allowed', fontFamily: 'inherit', fontSize: 14 }} disabled>Registrarse</button>
         </div>
         <div style={{ marginBottom: 12 }}>
           <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Apodo</label>
           <input style={inp} placeholder="Tu apodo en la polla" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         </div>
-        <div style={{ marginBottom: isReg ? 12 : 20 }}>
+        <div style={{ marginBottom: 20 }}>
           <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Contraseña</label>
-          <input style={inp} type="password" placeholder="Contraseña" value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })} onKeyDown={e => e.key === 'Enter' && (isReg ? register() : login())} />
+          <input style={inp} type="password" placeholder="Contraseña" value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })} onKeyDown={e => e.key === 'Enter' && login()} />
         </div>
-        {isReg && <div style={{ marginBottom: 20 }}>
-          <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Confirmar contraseña</label>
-          <input style={inp} type="password" placeholder="Repite la contraseña" value={form.conf} onChange={e => setForm({ ...form, conf: e.target.value })} onKeyDown={e => e.key === 'Enter' && register()} />
-        </div>}
-        <button style={btn()} onClick={isReg ? register : login}>{isReg ? '✅ Crear cuenta' : '🚀 Entrar'}</button>
+        <button style={btn()} onClick={login}>🚀 Entrar</button>
       </div>
     </div>
   );
@@ -395,15 +392,6 @@ export default function App() {
     );
   }
 
-  const gMatches = matches.filter(m => m.group_name === group).filter(m => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return m.home_team.toLowerCase().includes(s) ||
-      m.away_team.toLowerCase().includes(s) ||
-      fmt(m.match_date).toLowerCase().includes(s) ||
-      (m.venue || '').toLowerCase().includes(s);
-  });
-
   const allFilteredMatches = search
     ? matches.filter(m => {
         const s = search.toLowerCase();
@@ -412,9 +400,9 @@ export default function App() {
           fmt(m.match_date).toLowerCase().includes(s) ||
           (m.venue || '').toLowerCase().includes(s);
       })
-    : gMatches;
+    : matches.filter(m => m.group_name === group);
 
-  const displayMatches = search ? allFilteredMatches : gMatches;
+  const displayMatches = allFilteredMatches;
 
   return (
     <div style={{ fontFamily: "'Barlow', sans-serif", background: BG, minHeight: '100vh', color: '#fff', maxWidth: 480, margin: '0 auto', paddingBottom: 72 }}>
@@ -441,12 +429,10 @@ export default function App() {
         {/* PARTIDOS */}
         {tab === 'partidos' && (
           <div>
-            {/* Buscador */}
             <div style={{ marginBottom: 12 }}>
-              <input style={{ ...inp, paddingLeft: 36, backgroundImage: 'none' }} placeholder="🔍 Buscar por equipo, fecha o sede..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input style={{ ...inp, backgroundImage: 'none' }} placeholder="🔍 Buscar por equipo, fecha o sede..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
-            {/* Group selector - solo si no hay búsqueda */}
             {!search && (
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
                 {GROUPS.map(g => (
@@ -462,6 +448,8 @@ export default function App() {
               const myPred = preds.find(p => p.participant_id === user.id && p.match_id === m.id);
               const myPts = myPred && m.is_finished ? calcPts(myPred, m) : null;
               const f = pf[m.id] || { h: myPred?.home_score_pred ?? '', a: myPred?.away_score_pred ?? '' };
+              const matchPredsList = preds.filter(p => p.match_id === m.id);
+
               return (
                 <div key={m.id} style={card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -485,6 +473,8 @@ export default function App() {
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.3 }}>{m.away_team}</div>
                     </div>
                   </div>
+
+                  {/* Formulario predicción */}
                   {!cl && !m.is_finished && (
                     <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 10 }}>
                       <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>Tu predicción</div>
@@ -496,6 +486,8 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+                  {/* Mi predicción (cerrado) */}
                   {cl && (
                     <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       {myPred ? <span style={{ fontSize: 13 }}>🎯 Mi apuesta: <b>{myPred.home_score_pred} - {myPred.away_score_pred}</b></span>
@@ -503,6 +495,43 @@ export default function App() {
                       {myPts !== null && <span style={{ background: myPts === 5 ? GOLD : myPts >= 3 ? '#1B5E20' : myPts > 0 ? '#1565C0' : '#333', color: myPts === 5 ? '#000' : '#fff', borderRadius: 12, padding: '3px 12px', fontSize: 13, fontWeight: 700 }}>{myPts} pts</span>}
                     </div>
                   )}
+
+                  {/* Ver predicciones de todos */}
+                  {cl && (
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        style={{ background: 'transparent', border: `1px solid ${BLUE}`, borderRadius: 6, color: '#A0B4C8', fontSize: 12, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+                        onClick={() => setShowMatchPreds(showMatchPreds === m.id ? null : m.id)}>
+                        👥 {showMatchPreds === m.id ? 'Ocultar' : 'Ver'} predicciones ({matchPredsList.length})
+                      </button>
+                      {showMatchPreds === m.id && (
+                        <div style={{ marginTop: 8, background: BG, borderRadius: 8, padding: 10 }}>
+                          {parts.length === 0 && <div style={{ color: '#A0B4C8', fontSize: 12, textAlign: 'center' }}>Sin predicciones aún</div>}
+                          {parts.map((p, i) => {
+                            const pred = matchPredsList.find(pr => pr.participant_id === p.id);
+                            const pts = pred && m.is_finished ? calcPts(pred, m) : null;
+                            return (
+                              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < parts.length - 1 ? `1px solid ${BLUE}` : 'none' }}>
+                                <span style={{ fontSize: 13, fontWeight: p.id === user.id ? 700 : 400, color: p.id === user.id ? GOLD : '#fff' }}>
+                                  {p.id === user.id ? '👤 ' : ''}{p.name}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  {pred
+                                    ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 800 }}>{pred.home_score_pred} - {pred.away_score_pred}</span>
+                                    : <span style={{ color: '#555', fontSize: 12 }}>Sin apuesta</span>}
+                                  {m.is_finished
+                                    ? <span style={{ background: pts === 5 ? GOLD : pts >= 3 ? '#1B5E20' : pts > 0 ? '#1565C0' : '#333', color: pts === 5 ? '#000' : '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 12, fontWeight: 700, minWidth: 44, textAlign: 'center' }}>{pts ?? 0} pts</span>
+                                    : <span style={{ color: '#555', fontSize: 12, minWidth: 44, textAlign: 'center' }}>-</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Admin: ingresar resultado */}
                   {user.is_admin && !m.is_finished && cl && (
                     <div style={{ marginTop: 10 }}>
                       {resultEdit === m.id ? (
@@ -521,11 +550,15 @@ export default function App() {
                       )}
                     </div>
                   )}
+
+                  {/* Admin: revertir resultado */}
                   {user.is_admin && m.is_finished && (
                     <div style={{ marginTop: 8 }}>
                       <button style={btn('#7D0018', { fontSize: 12, padding: '6px 8px' })} onClick={() => revertMatch(m.id)}>↩️ Revertir resultado</button>
                     </div>
                   )}
+
+                  {/* Admin: ajustar hora */}
                   {user.is_admin && !m.is_finished && !cl && (
                     <div style={{ marginTop: 8 }}>
                       {timeEdit === m.id ? (
@@ -601,7 +634,6 @@ export default function App() {
           <div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 800, marginBottom: 16, color: GOLD }}>👑 ADMINISTRACIÓN</div>
 
-            {/* Resumen general */}
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>RESUMEN GENERAL</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               {[
@@ -616,7 +648,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Fases */}
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>FASES DEL TORNEO</div>
             {phases.map(ph => (
               <div key={ph.id} style={{ ...card, marginBottom: 8 }}>
@@ -645,7 +676,6 @@ export default function App() {
               </div>
             ))}
 
-            {/* Participantes */}
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, margin: '16px 0 8px' }}>PARTICIPANTES ({parts.length})</div>
             {parts.map(p => (
               <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
