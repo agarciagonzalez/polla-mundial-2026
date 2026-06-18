@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from "react";
 
 const SB_URL = 'https://yykgwrkziiyyackcixet.supabase.co';
-//const SB_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5a2d3cmt6aWl5eWFja2NpeGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTU4NDUsImV4cCI6MjA5NjQzMTg0NX0.BAboKgvb2yPZ92sImq6ePT4QicPJR_11XgaX9UAteZg';
 
 const H = {
@@ -38,6 +37,13 @@ function fmt(d) {
     weekday: 'short', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota'
   });
+}
+
+function fmtDay(d) {
+  const s = new Date(d).toLocaleDateString('es-CO', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Bogota'
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function toLocalInput(d) {
@@ -87,6 +93,7 @@ export default function App() {
   const [preds, setPreds] = useState([]);
   const [phases, setPhases] = useState([]);
   const [group, setGroup] = useState('A');
+  const [viewMode, setViewMode] = useState('group');
   const [detailPart, setDetailPart] = useState(null);
   const [form, setForm] = useState({ name: '', pass: '', conf: '' });
   const [pf, setPf] = useState({});
@@ -106,7 +113,6 @@ export default function App() {
     setTimeout(() => setToast({ msg: '', ok: true }), 3000);
   };
 
-  // Persistir sesión
   useEffect(() => {
     const saved = localStorage.getItem('pollaUser');
     if (saved) {
@@ -252,7 +258,6 @@ export default function App() {
 
   const rnk = ranking();
 
-  // MODAL REGLAS
   const RulesModal = () => (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: BG2, borderRadius: 16, padding: 24, maxWidth: 440, width: '100%', maxHeight: '80vh', overflowY: 'auto', border: `1px solid ${BLUE}` }}>
@@ -279,7 +284,6 @@ export default function App() {
     </div>
   );
 
-  // CONFIRM DELETE MODAL
   const ConfirmModal = () => (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: BG2, borderRadius: 16, padding: 24, maxWidth: 320, width: '100%', border: `1px solid ${RED}`, textAlign: 'center' }}>
@@ -294,15 +298,144 @@ export default function App() {
     </div>
   );
 
-  // LOGIN
+  const MatchCard = ({ m }) => {
+    const cl = isClosed(m.match_date);
+    const myPred = preds.find(p => p.participant_id === user.id && p.match_id === m.id);
+    const myPts = myPred && m.is_finished ? calcPts(myPred, m) : null;
+    const f = pf[m.id] || { h: myPred?.home_score_pred ?? '', a: myPred?.away_score_pred ?? '' };
+    const matchPredsList = preds.filter(p => p.match_id === m.id);
+
+    return (
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ color: '#A0B4C8', fontSize: 11 }}>#{m.match_number} · {fmt(m.match_date)}</span>
+          {m.is_finished ? <span style={{ background: '#1B5E20', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Final</span>
+            : cl ? <span style={{ background: '#7D0018', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Cerrado</span>
+              : <span style={{ background: '#1565C0', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Abierto</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ flex: 1, textAlign: 'right' }}>
+            <div style={{ fontSize: 26 }}>{fl(m.home_team)}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.3 }}>{m.home_team}</div>
+          </div>
+          <div style={{ padding: '0 14px', textAlign: 'center', minWidth: 80 }}>
+            {m.is_finished ? <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 800, color: GOLD }}>{m.home_score} - {m.away_score}</div>
+              : <div style={{ color: '#A0B4C8', fontSize: 18, fontWeight: 700 }}>vs</div>}
+            <div style={{ color: '#A0B4C8', fontSize: 10, marginTop: 2 }}>{m.venue}</div>
+          </div>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontSize: 26 }}>{fl(m.away_team)}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.3 }}>{m.away_team}</div>
+          </div>
+        </div>
+
+        {!cl && !m.is_finished && (
+          <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 10 }}>
+            <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>Tu predicción</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <input type="number" min="0" max="20" style={scoreInp} value={f.h} onChange={e => setPf({ ...pf, [m.id]: { ...f, h: e.target.value } })} placeholder="0" />
+              <span style={{ color: '#A0B4C8', fontSize: 20, fontWeight: 700 }}>-</span>
+              <input type="number" min="0" max="20" style={scoreInp} value={f.a} onChange={e => setPf({ ...pf, [m.id]: { ...f, a: e.target.value } })} placeholder="0" />
+              <button style={btn(myPred ? GREEN : RED, { width: 'auto', padding: '8px 14px', fontSize: 13 })} onClick={() => savePred(m.id)}>{myPred ? 'Actualizar' : 'Guardar'}</button>
+            </div>
+          </div>
+        )}
+
+        {cl && (
+          <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {myPred ? <span style={{ fontSize: 13 }}>🎯 Mi apuesta: <b>{myPred.home_score_pred} - {myPred.away_score_pred}</b></span>
+              : <span style={{ color: '#555', fontSize: 12 }}>No apostaste</span>}
+            {myPts !== null && <span style={{ background: myPts === 5 ? GOLD : myPts >= 3 ? '#1B5E20' : myPts > 0 ? '#1565C0' : '#333', color: myPts === 5 ? '#000' : '#fff', borderRadius: 12, padding: '3px 12px', fontSize: 13, fontWeight: 700 }}>{myPts} pts</span>}
+          </div>
+        )}
+
+        {cl && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              style={{ background: 'transparent', border: `1px solid ${BLUE}`, borderRadius: 6, color: '#A0B4C8', fontSize: 12, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+              onClick={() => setShowMatchPreds(showMatchPreds === m.id ? null : m.id)}>
+              👥 {showMatchPreds === m.id ? 'Ocultar' : 'Ver'} predicciones ({matchPredsList.length})
+            </button>
+            {showMatchPreds === m.id && (
+              <div style={{ marginTop: 8, background: BG, borderRadius: 8, padding: 10 }}>
+                {parts.length === 0 && <div style={{ color: '#A0B4C8', fontSize: 12, textAlign: 'center' }}>Sin predicciones aún</div>}
+                {parts.map((p, i) => {
+                  const pred = matchPredsList.find(pr => pr.participant_id === p.id);
+                  const pts = pred && m.is_finished ? calcPts(pred, m) : null;
+                  return (
+                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < parts.length - 1 ? `1px solid ${BLUE}` : 'none' }}>
+                      <span style={{ fontSize: 13, fontWeight: p.id === user.id ? 700 : 400, color: p.id === user.id ? GOLD : '#fff' }}>
+                        {p.id === user.id ? '👤 ' : ''}{p.name}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {pred
+                          ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 800 }}>{pred.home_score_pred} - {pred.away_score_pred}</span>
+                          : <span style={{ color: '#555', fontSize: 12 }}>Sin apuesta</span>}
+                        {m.is_finished
+                          ? <span style={{ background: pts === 5 ? GOLD : pts >= 3 ? '#1B5E20' : pts > 0 ? '#1565C0' : '#333', color: pts === 5 ? '#000' : '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 12, fontWeight: 700, minWidth: 44, textAlign: 'center' }}>{pts ?? 0} pts</span>
+                          : <span style={{ color: '#555', fontSize: 12, minWidth: 44, textAlign: 'center' }}>-</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {user.is_admin && !m.is_finished && cl && (
+          <div style={{ marginTop: 10 }}>
+            {resultEdit === m.id ? (
+              <div>
+                <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 6, textAlign: 'center' }}>Resultado final (tiempo reglamentario)</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+                  <input type="number" min="0" style={scoreInp} value={rf[m.id]?.h ?? ''} onChange={e => setRf({ ...rf, [m.id]: { ...rf[m.id], h: e.target.value } })} placeholder="0" />
+                  <span style={{ color: '#A0B4C8', fontWeight: 700 }}>-</span>
+                  <input type="number" min="0" style={scoreInp} value={rf[m.id]?.a ?? ''} onChange={e => setRf({ ...rf, [m.id]: { ...rf[m.id], a: e.target.value } })} placeholder="0" />
+                  <button style={btn(GREEN, { width: 'auto', padding: '8px 12px', fontSize: 14 })} onClick={() => saveResult(m.id)}>✓</button>
+                  <button style={btn('#555', { width: 'auto', padding: '8px 12px', fontSize: 14 })} onClick={() => setResultEdit(null)}>✕</button>
+                </div>
+              </div>
+            ) : (
+              <button style={btn('#1565C0', { fontSize: 12, padding: 8 })} onClick={() => setResultEdit(m.id)}>👑 Ingresar resultado</button>
+            )}
+          </div>
+        )}
+
+        {user.is_admin && m.is_finished && (
+          <div style={{ marginTop: 8 }}>
+            <button style={btn('#7D0018', { fontSize: 12, padding: '6px 8px' })} onClick={() => revertMatch(m.id)}>↩️ Revertir resultado</button>
+          </div>
+        )}
+
+        {user.is_admin && !m.is_finished && !cl && (
+          <div style={{ marginTop: 8 }}>
+            {timeEdit === m.id ? (
+              <div>
+                <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 4 }}>Nueva fecha/hora (hora Colombia)</div>
+                <input type="datetime-local" style={{ ...inp, marginBottom: 8 }} value={rtf[m.id] || toLocalInput(m.match_date)} onChange={e => setRtf({ ...rtf, [m.id]: e.target.value })} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={btn(GREEN, { fontSize: 12, padding: '7px 12px' })} onClick={() => saveTime(m.id)}>Guardar hora</button>
+                  <button style={btn('#555', { fontSize: 12, padding: '7px 12px' })} onClick={() => setTimeEdit(null)}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <button style={{ background: 'transparent', border: `1px solid ${BLUE}`, borderRadius: 6, color: '#A0B4C8', fontSize: 11, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => { setTimeEdit(m.id); setRtf({ ...rtf, [m.id]: toLocalInput(m.match_date) }); }}>⏰ Ajustar hora del partido</button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (view === 'login') return (
     <div style={{ fontFamily: "'Barlow', sans-serif", background: BG, minHeight: '100vh', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 24, maxWidth: 480, margin: '0 auto' }}>
       {toast.msg && <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', background: toast.ok ? '#1B5E20' : RED, color: '#fff', borderRadius: '0 0 10px 10px', padding: '10px 20px', fontSize: 14, fontWeight: 600, zIndex: 999, whiteSpace: 'nowrap' }}>{toast.msg}</div>}
       {showRules && <RulesModal />}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <img src="https://assets.football-logos.cc/logos/tournaments/1500x1500/fifa-world-cup-2026.31d2489d.png" 
-              alt="Mundial 2026" 
-              style={{ width: 160, height: 160, objectFit: 'contain', marginBottom: 8 }} />
+        <img src="https://assets.football-logos.cc/logos/tournaments/1500x1500/fifa-world-cup-2026.31d2489d.png"
+          alt="Mundial 2026"
+          style={{ width: 160, height: 160, objectFit: 'contain', marginBottom: 8 }} />
         <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 34, fontWeight: 800, letterSpacing: 2 }}>POLLA MUNDIAL</div>
         <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>USA · MÉXICO · CANADÁ 2026</div>
         <div style={{ color: '#A0B4C8', fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>by Maru</div>
@@ -332,7 +465,6 @@ export default function App() {
     </div>
   );
 
-  // DETAIL VIEW
   if (detailPart) {
     const pr = preds.filter(p => p.participant_id === detailPart.id);
     const me = rnk.find(r => r.id === detailPart.id) || { total: 0, ganadores: 0, golesEx: 0 };
@@ -392,7 +524,7 @@ export default function App() {
     );
   }
 
-  const allFilteredMatches = search
+  const displayMatches = search
     ? matches.filter(m => {
         const s = search.toLowerCase();
         return m.home_team.toLowerCase().includes(s) ||
@@ -402,7 +534,16 @@ export default function App() {
       })
     : matches.filter(m => m.group_name === group);
 
-  const displayMatches = allFilteredMatches;
+  const matchesByDate = () => {
+    const sorted = [...matches].sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+    const groups = {};
+    sorted.forEach(m => {
+      const day = fmtDay(m.match_date);
+      if (!groups[day]) groups[day] = [];
+      groups[day].push(m);
+    });
+    return groups;
+  };
 
   return (
     <div style={{ fontFamily: "'Barlow', sans-serif", background: BG, minHeight: '100vh', color: '#fff', maxWidth: 480, margin: '0 auto', paddingBottom: 72 }}>
@@ -426,7 +567,6 @@ export default function App() {
 
       <div style={{ padding: '16px 16px 0' }}>
 
-        {/* PARTIDOS */}
         {tab === 'partidos' && (
           <div>
             <div style={{ marginBottom: 12 }}>
@@ -434,6 +574,13 @@ export default function App() {
             </div>
 
             {!search && (
+              <div style={{ display: 'flex', marginBottom: 12, background: BG, borderRadius: 8, padding: 4 }}>
+                <button style={{ flex: 1, padding: '7px', borderRadius: 6, background: viewMode === 'group' ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => setViewMode('group')}>🔠 Por Grupo</button>
+                <button style={{ flex: 1, padding: '7px', borderRadius: 6, background: viewMode === 'date' ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => setViewMode('date')}>📅 Por Fecha</button>
+              </div>
+            )}
+
+            {!search && viewMode === 'group' && (
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
                 {GROUPS.map(g => (
                   <button key={g} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: group === g ? RED : BLUE, color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }} onClick={() => setGroup(g)}>{g}</button>
@@ -443,145 +590,21 @@ export default function App() {
 
             {search && <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8 }}>{displayMatches.length} resultados para "{search}"</div>}
 
-            {displayMatches.map(m => {
-              const cl = isClosed(m.match_date);
-              const myPred = preds.find(p => p.participant_id === user.id && p.match_id === m.id);
-              const myPts = myPred && m.is_finished ? calcPts(myPred, m) : null;
-              const f = pf[m.id] || { h: myPred?.home_score_pred ?? '', a: myPred?.away_score_pred ?? '' };
-              const matchPredsList = preds.filter(p => p.match_id === m.id);
-
-              return (
-                <div key={m.id} style={card}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ color: '#A0B4C8', fontSize: 11 }}>#{m.match_number} · {fmt(m.match_date)}</span>
-                    {m.is_finished ? <span style={{ background: '#1B5E20', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Final</span>
-                      : cl ? <span style={{ background: '#7D0018', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Cerrado</span>
-                        : <span style={{ background: '#1565C0', color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 10 }}>Abierto</span>}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <div style={{ flex: 1, textAlign: 'right' }}>
-                      <div style={{ fontSize: 26 }}>{fl(m.home_team)}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.3 }}>{m.home_team}</div>
-                    </div>
-                    <div style={{ padding: '0 14px', textAlign: 'center', minWidth: 80 }}>
-                      {m.is_finished ? <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 800, color: GOLD }}>{m.home_score} - {m.away_score}</div>
-                        : <div style={{ color: '#A0B4C8', fontSize: 18, fontWeight: 700 }}>vs</div>}
-                      <div style={{ color: '#A0B4C8', fontSize: 10, marginTop: 2 }}>{m.venue}</div>
-                    </div>
-                    <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ fontSize: 26 }}>{fl(m.away_team)}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.3 }}>{m.away_team}</div>
-                    </div>
-                  </div>
-
-                  {/* Formulario predicción */}
-                  {!cl && !m.is_finished && (
-                    <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 10 }}>
-                      <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>Tu predicción</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                        <input type="number" min="0" max="20" style={scoreInp} value={f.h} onChange={e => setPf({ ...pf, [m.id]: { ...f, h: e.target.value } })} placeholder="0" />
-                        <span style={{ color: '#A0B4C8', fontSize: 20, fontWeight: 700 }}>-</span>
-                        <input type="number" min="0" max="20" style={scoreInp} value={f.a} onChange={e => setPf({ ...pf, [m.id]: { ...f, a: e.target.value } })} placeholder="0" />
-                        <button style={btn(myPred ? GREEN : RED, { width: 'auto', padding: '8px 14px', fontSize: 13 })} onClick={() => savePred(m.id)}>{myPred ? 'Actualizar' : 'Guardar'}</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mi predicción (cerrado) */}
-                  {cl && (
-                    <div style={{ borderTop: `1px solid ${BLUE}`, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {myPred ? <span style={{ fontSize: 13 }}>🎯 Mi apuesta: <b>{myPred.home_score_pred} - {myPred.away_score_pred}</b></span>
-                        : <span style={{ color: '#555', fontSize: 12 }}>No apostaste</span>}
-                      {myPts !== null && <span style={{ background: myPts === 5 ? GOLD : myPts >= 3 ? '#1B5E20' : myPts > 0 ? '#1565C0' : '#333', color: myPts === 5 ? '#000' : '#fff', borderRadius: 12, padding: '3px 12px', fontSize: 13, fontWeight: 700 }}>{myPts} pts</span>}
-                    </div>
-                  )}
-
-                  {/* Ver predicciones de todos */}
-                  {cl && (
-                    <div style={{ marginTop: 8 }}>
-                      <button
-                        style={{ background: 'transparent', border: `1px solid ${BLUE}`, borderRadius: 6, color: '#A0B4C8', fontSize: 12, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
-                        onClick={() => setShowMatchPreds(showMatchPreds === m.id ? null : m.id)}>
-                        👥 {showMatchPreds === m.id ? 'Ocultar' : 'Ver'} predicciones ({matchPredsList.length})
-                      </button>
-                      {showMatchPreds === m.id && (
-                        <div style={{ marginTop: 8, background: BG, borderRadius: 8, padding: 10 }}>
-                          {parts.length === 0 && <div style={{ color: '#A0B4C8', fontSize: 12, textAlign: 'center' }}>Sin predicciones aún</div>}
-                          {parts.map((p, i) => {
-                            const pred = matchPredsList.find(pr => pr.participant_id === p.id);
-                            const pts = pred && m.is_finished ? calcPts(pred, m) : null;
-                            return (
-                              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < parts.length - 1 ? `1px solid ${BLUE}` : 'none' }}>
-                                <span style={{ fontSize: 13, fontWeight: p.id === user.id ? 700 : 400, color: p.id === user.id ? GOLD : '#fff' }}>
-                                  {p.id === user.id ? '👤 ' : ''}{p.name}
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  {pred
-                                    ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 16, fontWeight: 800 }}>{pred.home_score_pred} - {pred.away_score_pred}</span>
-                                    : <span style={{ color: '#555', fontSize: 12 }}>Sin apuesta</span>}
-                                  {m.is_finished
-                                    ? <span style={{ background: pts === 5 ? GOLD : pts >= 3 ? '#1B5E20' : pts > 0 ? '#1565C0' : '#333', color: pts === 5 ? '#000' : '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 12, fontWeight: 700, minWidth: 44, textAlign: 'center' }}>{pts ?? 0} pts</span>
-                                    : <span style={{ color: '#555', fontSize: 12, minWidth: 44, textAlign: 'center' }}>-</span>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Admin: ingresar resultado */}
-                  {user.is_admin && !m.is_finished && cl && (
-                    <div style={{ marginTop: 10 }}>
-                      {resultEdit === m.id ? (
-                        <div>
-                          <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 6, textAlign: 'center' }}>Resultado final (tiempo reglamentario)</div>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-                            <input type="number" min="0" style={scoreInp} value={rf[m.id]?.h ?? ''} onChange={e => setRf({ ...rf, [m.id]: { ...rf[m.id], h: e.target.value } })} placeholder="0" />
-                            <span style={{ color: '#A0B4C8', fontWeight: 700 }}>-</span>
-                            <input type="number" min="0" style={scoreInp} value={rf[m.id]?.a ?? ''} onChange={e => setRf({ ...rf, [m.id]: { ...rf[m.id], a: e.target.value } })} placeholder="0" />
-                            <button style={btn(GREEN, { width: 'auto', padding: '8px 12px', fontSize: 14 })} onClick={() => saveResult(m.id)}>✓</button>
-                            <button style={btn('#555', { width: 'auto', padding: '8px 12px', fontSize: 14 })} onClick={() => setResultEdit(null)}>✕</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button style={btn('#1565C0', { fontSize: 12, padding: 8 })} onClick={() => setResultEdit(m.id)}>👑 Ingresar resultado</button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Admin: revertir resultado */}
-                  {user.is_admin && m.is_finished && (
-                    <div style={{ marginTop: 8 }}>
-                      <button style={btn('#7D0018', { fontSize: 12, padding: '6px 8px' })} onClick={() => revertMatch(m.id)}>↩️ Revertir resultado</button>
-                    </div>
-                  )}
-
-                  {/* Admin: ajustar hora */}
-                  {user.is_admin && !m.is_finished && !cl && (
-                    <div style={{ marginTop: 8 }}>
-                      {timeEdit === m.id ? (
-                        <div>
-                          <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 4 }}>Nueva fecha/hora (hora Colombia)</div>
-                          <input type="datetime-local" style={{ ...inp, marginBottom: 8 }} value={rtf[m.id] || toLocalInput(m.match_date)} onChange={e => setRtf({ ...rtf, [m.id]: e.target.value })} />
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={btn(GREEN, { fontSize: 12, padding: '7px 12px' })} onClick={() => saveTime(m.id)}>Guardar hora</button>
-                            <button style={btn('#555', { fontSize: 12, padding: '7px 12px' })} onClick={() => setTimeEdit(null)}>Cancelar</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button style={{ background: 'transparent', border: `1px solid ${BLUE}`, borderRadius: 6, color: '#A0B4C8', fontSize: 11, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => { setTimeEdit(m.id); setRtf({ ...rtf, [m.id]: toLocalInput(m.match_date) }); }}>⏰ Ajustar hora del partido</button>
-                      )}
-                    </div>
-                  )}
+            {/* Vista Por Fecha */}
+            {!search && viewMode === 'date' && Object.entries(matchesByDate()).map(([day, dayMatches]) => (
+              <div key={day} style={{ marginBottom: 4 }}>
+                <div style={{ color: GOLD, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, borderBottom: `1px solid ${BLUE}`, paddingBottom: 6 }}>
+                  📅 {day}
                 </div>
-              );
-            })}
+                {dayMatches.map(m => <MatchCard key={m.id} m={m} />)}
+              </div>
+            ))}
+
+            {/* Vista Por Grupo o Búsqueda */}
+            {(search || viewMode === 'group') && displayMatches.map(m => <MatchCard key={m.id} m={m} />)}
           </div>
         )}
 
-        {/* RANKING */}
         {tab === 'ranking' && (
           <div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 800, marginBottom: 16, color: GOLD }}>🏆 RANKING</div>
@@ -604,7 +627,6 @@ export default function App() {
           </div>
         )}
 
-        {/* PERFIL */}
         {tab === 'perfil' && (() => {
           const me = rnk.find(r => r.id === user.id) || { total: 0, ganadores: 0, golesEx: 0 };
           const pos = rnk.findIndex(r => r.id === user.id) + 1;
@@ -629,11 +651,9 @@ export default function App() {
           );
         })()}
 
-        {/* ADMIN */}
         {tab === 'admin' && user.is_admin && (
           <div>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, fontWeight: 800, marginBottom: 16, color: GOLD }}>👑 ADMINISTRACIÓN</div>
-
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>RESUMEN GENERAL</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               {[
@@ -647,7 +667,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>FASES DEL TORNEO</div>
             {phases.map(ph => (
               <div key={ph.id} style={{ ...card, marginBottom: 8 }}>
@@ -663,19 +682,12 @@ export default function App() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {!ph.is_active && !ph.is_finished && (
-                    <button style={btn(GREEN, { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>▶ Activar fase</button>
-                  )}
-                  {ph.is_active && (
-                    <button style={btn('#7D0018', { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>⏹ Finalizar fase</button>
-                  )}
-                  {ph.is_finished && (
-                    <button style={btn('#1565C0', { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>↩️ Reactivar fase</button>
-                  )}
+                  {!ph.is_active && !ph.is_finished && <button style={btn(GREEN, { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>▶ Activar fase</button>}
+                  {ph.is_active && <button style={btn('#7D0018', { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>⏹ Finalizar fase</button>}
+                  {ph.is_finished && <button style={btn('#1565C0', { fontSize: 12, padding: '6px 8px' })} onClick={() => togglePhase(ph.id, ph.is_active, ph.is_finished)}>↩️ Reactivar fase</button>}
                 </div>
               </div>
             ))}
-
             <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, margin: '16px 0 8px' }}>PARTICIPANTES ({parts.length})</div>
             {parts.map(p => (
               <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -686,9 +698,7 @@ export default function App() {
                   </div>
                 </div>
                 {!p.is_admin && (
-                  <button style={{ background: 'transparent', border: `1px solid ${RED}`, borderRadius: 6, color: RED, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 8 }} onClick={() => setConfirmDelete(p.id)}>
-                    🗑️
-                  </button>
+                  <button style={{ background: 'transparent', border: `1px solid ${RED}`, borderRadius: 6, color: RED, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 8 }} onClick={() => setConfirmDelete(p.id)}>🗑️</button>
                 )}
               </div>
             ))}
@@ -696,7 +706,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Bottom Nav */}
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: '#0D2240', borderTop: `1px solid ${BLUE}`, display: 'flex', zIndex: 100 }}>
         {[
           { id: 'partidos', icon: '📅', label: 'Partidos' },
