@@ -299,7 +299,7 @@ export default function App() {
     </div>
   );
 
-  const MatchCard = ({ m }) => {
+  const renderMatch = (m) => {
     const cl = isClosed(m.match_date);
     const myPred = preds.find(p => p.participant_id === user.id && p.match_id === m.id);
     const myPts = myPred && m.is_finished ? calcPts(myPred, m) : null;
@@ -633,13 +633,13 @@ export default function App() {
                     </div>
                   )}
                   {/* Partidos del día seleccionado */}
-                  {activeDay && activeDay.matches.map(m => <MatchCard key={m.id} m={m} />)}
+                  {activeDay && activeDay.matches.map(m => <div key={m.id}>{renderMatch(m)}</div>)}
                 </div>
               );
             })()}
 
             {/* Vista Por Grupo o Búsqueda */}
-            {(search || viewMode === 'group') && displayMatches.map(m => <MatchCard key={m.id} m={m} />)}
+            {(search || viewMode === 'group') && displayMatches.map(m => <div key={m.id}>{renderMatch(m)}</div>)}
           </div>
         )}
 
