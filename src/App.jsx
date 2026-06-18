@@ -107,6 +107,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showMatchPreds, setShowMatchPreds] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   const say = (msg, ok = true) => {
     setToast({ msg, ok });
@@ -591,14 +592,51 @@ export default function App() {
             {search && <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8 }}>{displayMatches.length} resultados para "{search}"</div>}
 
             {/* Vista Por Fecha */}
-            {!search && viewMode === 'date' && Object.entries(matchesByDate()).map(([day, dayMatches]) => (
-              <div key={day} style={{ marginBottom: 4 }}>
-                <div style={{ color: GOLD, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, borderBottom: `1px solid ${BLUE}`, paddingBottom: 6 }}>
-                  📅 {day}
+            {!search && viewMode === 'date' && (() => {
+              const sorted = [...matches].sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
+              // Obtener días únicos
+              const days = [];
+              const dayKeys = {};
+              sorted.forEach(m => {
+                const key = new Date(m.match_date).toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+                if (!dayKeys[key]) {
+                  dayKeys[key] = true;
+                  days.push({
+                    key,
+                    label: new Date(m.match_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' }),
+                    full: fmtDay(m.match_date),
+                    matches: []
+                  });
+                }
+                days.find(d => d.key === key).matches.push(m);
+              });
+
+              // Seleccionar primer día si no hay ninguno seleccionado
+              const activeDayKey = selectedDate || days[0]?.key;
+              const activeDay = days.find(d => d.key === activeDayKey) || days[0];
+
+              return (
+                <div>
+                  {/* Selector de fechas */}
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
+                    {days.map(d => (
+                      <button key={d.key} style={{ padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: d.key === activeDayKey ? RED : BLUE, color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        onClick={() => setSelectedDate(d.key)}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Título del día seleccionado */}
+                  {activeDay && (
+                    <div style={{ color: GOLD, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, borderBottom: `1px solid ${BLUE}`, paddingBottom: 6 }}>
+                      📅 {activeDay.full}
+                    </div>
+                  )}
+                  {/* Partidos del día seleccionado */}
+                  {activeDay && activeDay.matches.map(m => <MatchCard key={m.id} m={m} />)}
                 </div>
-                {dayMatches.map(m => <MatchCard key={m.id} m={m} />)}
-              </div>
-            ))}
+              );
+            })()}
 
             {/* Vista Por Grupo o Búsqueda */}
             {(search || viewMode === 'group') && displayMatches.map(m => <MatchCard key={m.id} m={m} />)}
