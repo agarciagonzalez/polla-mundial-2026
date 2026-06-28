@@ -487,13 +487,24 @@ export default function App() {
               </div>
             ))}
           </div>
-          {GROUPS.map(g => {
-            const gm = matches.filter(m => m.group_name === g);
-            const items = gm.map(m => ({ m, pred: pr.find(p => p.match_id === m.id) })).filter(x => x.m.is_finished || x.pred);
-            if (!items.length) return null;
-            return (
-              <div key={g} style={{ marginBottom: 12 }}>
-                <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>GRUPO {g}</div>
+          {/* Partidos por fecha (funciona para grupos y eliminatorias) */}
+          {(() => {
+            const allItems = [...matches]
+              .sort((a, b) => new Date(a.match_date) - new Date(b.match_date))
+              .map(m => ({ m, pred: pr.find(p => p.match_id === m.id) }))
+              .filter(x => x.m.is_finished || x.pred);
+            if (!allItems.length) return <div style={{ textAlign: 'center', color: '#A0B4C8', marginTop: 20 }}>Sin predicciones aún</div>;
+
+            const byDate = {};
+            allItems.forEach(item => {
+              const day = fmtDay(item.m.match_date);
+              if (!byDate[day]) byDate[day] = [];
+              byDate[day].push(item);
+            });
+
+            return Object.entries(byDate).map(([day, items]) => (
+              <div key={day} style={{ marginBottom: 12 }}>
+                <div style={{ color: RED, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 6 }}>📅 {day}</div>
                 {items.map(({ m, pred }) => {
                   const showPred = isClosed(m.match_date) || detailPart.id === user.id || user.is_admin;
                   const pts = pred && m.is_finished ? calcPts(pred, m) : null;
@@ -518,8 +529,8 @@ export default function App() {
                   );
                 })}
               </div>
-            );
-          })}
+            ));
+          })()}
         </div>
       </div>
     );
