@@ -445,7 +445,7 @@ export default function App() {
       <div style={card}>
         <div style={{ display: 'flex', marginBottom: 20, background: BG, borderRadius: 8, padding: 4 }}>
           <button style={{ flex: 1, padding: 8, borderRadius: 6, background: !isReg ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} onClick={() => setIsReg(false)}>Ingresar</button>
-          <button style={{ flex: 1, padding: 8, borderRadius: 6, background: 'transparent', color: '#555', border: 'none', fontWeight: 600, cursor: 'not-allowed', fontFamily: 'inherit', fontSize: 14 }} disabled>Registrarse</button>
+          <button style={{ flex: 1, padding: 8, borderRadius: 6, background: isReg ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} onClick={() => setIsReg(true)}>Registrarse</button>
         </div>
         <div style={{ marginBottom: 12 }}>
           <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Apodo</label>
@@ -574,27 +574,11 @@ export default function App() {
               <input style={{ ...inp, backgroundImage: 'none' }} placeholder="🔍 Buscar por equipo, fecha o sede..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
 
-            {!search && (
-              <div style={{ display: 'flex', marginBottom: 12, background: BG, borderRadius: 8, padding: 4 }}>
-                <button style={{ flex: 1, padding: '7px', borderRadius: 6, background: viewMode === 'group' ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => setViewMode('group')}>🔠 Por Grupo</button>
-                <button style={{ flex: 1, padding: '7px', borderRadius: 6, background: viewMode === 'date' ? RED : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }} onClick={() => setViewMode('date')}>📅 Por Fecha</button>
-              </div>
-            )}
-
-            {!search && viewMode === 'group' && (
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
-                {GROUPS.map(g => (
-                  <button key={g} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700, background: group === g ? RED : BLUE, color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }} onClick={() => setGroup(g)}>{g}</button>
-                ))}
-              </div>
-            )}
-
             {search && <div style={{ color: '#A0B4C8', fontSize: 12, marginBottom: 8 }}>{displayMatches.length} resultados para "{search}"</div>}
+            {search && displayMatches.map(m => <div key={m.id}>{renderMatch(m)}</div>)}
 
-            {/* Vista Por Fecha */}
-            {!search && viewMode === 'date' && (() => {
+            {!search && (() => {
               const sorted = [...matches].sort((a, b) => new Date(a.match_date) - new Date(b.match_date));
-              // Obtener días únicos
               const days = [];
               const dayKeys = {};
               sorted.forEach(m => {
@@ -610,36 +594,21 @@ export default function App() {
                 }
                 days.find(d => d.key === key).matches.push(m);
               });
-
-              // Seleccionar primer día si no hay ninguno seleccionado
               const activeDayKey = selectedDate || days[0]?.key;
               const activeDay = days.find(d => d.key === activeDayKey) || days[0];
-
               return (
                 <div>
-                  {/* Selector de fechas */}
                   <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, scrollbarWidth: 'none' }}>
                     {days.map(d => (
                       <button key={d.key} style={{ padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: d.key === activeDayKey ? RED : BLUE, color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                        onClick={() => setSelectedDate(d.key)}>
-                        {d.label}
-                      </button>
+                        onClick={() => setSelectedDate(d.key)}>{d.label}</button>
                     ))}
                   </div>
-                  {/* Título del día seleccionado */}
-                  {activeDay && (
-                    <div style={{ color: GOLD, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, borderBottom: `1px solid ${BLUE}`, paddingBottom: 6 }}>
-                      📅 {activeDay.full}
-                    </div>
-                  )}
-                  {/* Partidos del día seleccionado */}
+                  {activeDay && <div style={{ color: GOLD, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, borderBottom: `1px solid ${BLUE}`, paddingBottom: 6 }}>📅 {activeDay.full}</div>}
                   {activeDay && activeDay.matches.map(m => <div key={m.id}>{renderMatch(m)}</div>)}
                 </div>
               );
             })()}
-
-            {/* Vista Por Grupo o Búsqueda */}
-            {(search || viewMode === 'group') && displayMatches.map(m => <div key={m.id}>{renderMatch(m)}</div>)}
           </div>
         )}
 
