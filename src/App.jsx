@@ -451,11 +451,15 @@ export default function App() {
           <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Apodo</label>
           <input style={inp} placeholder="Tu apodo en la polla" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Contraseña</label>
-          <input style={inp} type="password" placeholder="Contraseña" value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })} onKeyDown={e => e.key === 'Enter' && login()} />
-        </div>
-        <button style={btn()} onClick={login}>🚀 Entrar</button>
+        <div style={{ marginBottom: isReg ? 12 : 20 }}>
+                  <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Contraseña</label>
+                  <input style={inp} type="password" placeholder="Contraseña" value={form.pass} onChange={e => setForm({ ...form, pass: e.target.value })} onKeyDown={e => e.key === 'Enter' && (isReg ? register() : login())} />
+                </div>
+                {isReg && <div style={{ marginBottom: 20 }}>
+                  <label style={{ color: '#A0B4C8', fontSize: 13, marginBottom: 4, display: 'block' }}>Confirmar contraseña</label>
+                  <input style={inp} type="password" placeholder="Repite la contraseña" value={form.conf} onChange={e => setForm({ ...form, conf: e.target.value })} onKeyDown={e => e.key === 'Enter' && register()} />
+                </div>}
+                <button style={btn()} onClick={isReg ? register : login}>{isReg ? '✅ Crear cuenta' : '🚀 Entrar'}</button>
       </div>
     </div>
   );
